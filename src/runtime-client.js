@@ -53,7 +53,7 @@ export function createRuntimeController({storage,chrome,log}) {
         throw Error('Já existe uma tarefa possivelmente em execução no Runtime. Verifique a conexão e a auditoria antes de iniciar outra.');
     }
     let page=await chrome.tabs.get(tabId);
-    let url=/^https?:\/\//.test(page.url||'')?page.url:'https://www.google.com/';
+    let url=/^https?:\/\//.test(page.url||'')?page.url:'about:blank';
     const id=crypto.randomUUID();
     const prompt=isContinuation(userMessage)?buildContinuation(userMessage,previous,[]).prompt:userMessage;
     await change(tabId,{backend:'runtime',runtimeJobId:id,runtimeFinalized:false,runtimeSeq:0,runId:id,status:'starting',
@@ -64,7 +64,7 @@ export function createRuntimeController({storage,chrome,log}) {
         client_job_id:id,workspace:conversationId,prompt,url,model:settings.model||PROVIDERS[settings.provider]?.model||'',
         base_url:settings.baseURL||'https://openrouter.ai/api/v1',api_key:apiKey,
         approval_mode:settings.approvalMode,
-        allowed_origins:[new URL(url).origin,...(settings.runtimeOrigins||'').split(',').map(x=>x.trim()).filter(Boolean)],
+        allowed_origins:[...(url==='about:blank'?[]:[new URL(url).origin]),...(settings.runtimeOrigins||'').split(',').map(x=>x.trim()).filter(Boolean)],
         allow_sensitive:false,vision_enabled:settings.visionEnabled===true,
         resume_of:isContinuation(userMessage)&&['needs_review','interrupted','error','cancelled'].includes(previous.status)?(previous.runtimeJobId||null):null
       }});
