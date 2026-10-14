@@ -38,3 +38,7 @@ A suíte JavaScript inclui simulações de transições de estado do Chrome para
 4. Teste uma URL inválida e uma página Chrome protegida; confirme recusa segura, sem falsa mensagem de sucesso.
 5. Simule conexão cortada durante navegação; confirme `NAVEGACAO_SEM_CONFIRMACAO`, sem retry automático.
 6. Reexecute `npm test` e a suíte Python antes de promover a candidata.
+
+## Hotfix CI — cancelamento durante inicialização
+
+A análise do GitHub Actions revelou que o lançamento demorado do Chromium podia causar cancelamento antes de o indicador `uncertain` ser definido. O runtime agora inicializa esse indicador antes de qualquer operação assíncrona; interrupções antes da primeira ação são registradas como `cancelled`, não como sucesso ou erro mascarado. Um novo teste de regressão reproduz exatamente esse cenário. O teste Chromium recebeu prazo de até 65 segundos para permitir inicialização em runners lentos; isso não suprime resultados de falha.

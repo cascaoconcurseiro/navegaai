@@ -1,7 +1,7 @@
 {
   "name": "navegaai-chrome-extension",
   "private": true,
-  "version": "3.3.0-rc.1",
+  "version": "3.3.0-rc.2",
   "type": "module",
   "description": "NavegaAI 3.3 RC: isolated browser workspaces, durable recovery, risk approvals and diagnostics",
   "scripts": {

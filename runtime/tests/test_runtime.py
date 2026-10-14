@@ -24,6 +24,27 @@ class RuntimeCoreTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(origin_of('https://mail.google.com/mail/u/0/'),'https://mail.google.com')
         self.assertNotIn('password',str(safe_event({'event':'test','password':'s3cret'})))
 
+    async def test_cancel_during_browser_start_is_recorded_without_unbound_state(self):
+        with tempfile.TemporaryDirectory() as root:
+            started=asyncio.Event()
+            async def slow_browser():
+                started.set()
+                await asyncio.Event().wait()  # cancelled before a page exists
+            rt=Runtime(Path(root)/'db',Path(root)/'profiles',browser_factory=slow_browser)
+            try:
+                job=await rt.submit(workspace='w',prompt='Abra um site',url='https://example.com',
+                                    model='fixture',base_url='https://openrouter.ai/api/v1',
+                                    api_key='unused',approval_mode='auto')
+                await asyncio.wait_for(started.wait(),timeout=1)
+                active=rt.tasks[job]
+                active.cancel()
+                result=await asyncio.gather(active,return_exceptions=True)
+                self.assertIsInstance(result[0],asyncio.CancelledError)
+                self.assertEqual(rt.status(job)['status'],'cancelled')
+                self.assertIn('cancelled',[e['event'] for e in rt.store.events(job)])
+            finally:
+                await rt.shutdown()
+
     async def test_submit_idempotent_and_workspace_isolation(self):
         with tempfile.TemporaryDirectory() as root:
             gate=asyncio.Event()

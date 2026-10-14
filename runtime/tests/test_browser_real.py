@@ -59,7 +59,7 @@ class BrowserIntegration(unittest.IsolatedAsyncioTestCase):
             url='https://navegaai-lab.example/'
             job=await runtime.submit(workspace='chat1',prompt='Teste',url=url,model='fake',
               base_url='https://openrouter.ai/api/v1',api_key='test-key',approval_mode='auto')
-            await asyncio.wait_for(runtime.tasks[job],timeout=20)
+            await asyncio.wait_for(runtime.tasks[job],timeout=65)
             result=runtime.status(job)
             assert result['status']=='completed',result
             assert result['answer'].startswith('Concluído'),result

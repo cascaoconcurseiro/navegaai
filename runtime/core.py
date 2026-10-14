@@ -466,7 +466,11 @@ class Runtime:
         async with self.limit:
             lock=self.workspace_locks.setdefault(workspace,asyncio.Lock())
             async with lock:
+                # Cancellation may happen during browser launch, before the
+                # first LLM call or any tool dispatch. Initialize the safety
+                # verdict BEFORE awaiting page creation.
                 page=None
+                uncertain=False
                 try:
                     self.store.set(job,status='running')
                     self.store.append(job,{'event':'started'})
@@ -475,7 +479,7 @@ class Runtime:
                     if origin_of(page.url) not in allowed:
                         await page.goto(url,wait_until='domcontentloaded',timeout=20000)
                     messages=[{'role':'system','content':SYSTEM},{'role':'user','content':prompt}]
-                    mutations=0;verified=0;failures=0;uncertain=False
+                    mutations=0;verified=0;failures=0
                     no_change=0
                     pending_proof=None
                     run_started=time.monotonic()
