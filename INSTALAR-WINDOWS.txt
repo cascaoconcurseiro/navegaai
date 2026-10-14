@@ -1,0 +1,17 @@
+NAVEGAAI 0.6.0 — INSTALACAO NO CHROME
+
+1. Extraia o ZIP Standard (sem debugger) ou Advanced-CDP (depuracao poderosa).
+2. Abra chrome://extensions no Chrome e ative Modo do desenvolvedor.
+3. Clique em Carregar sem compactacao e selecione a pasta NavegaAI-Extension.
+4. Abra uma aba comum da web e abra o NavegaAI pelo icone da extensao.
+5. Use o seletor de modelos e configure sua chave no menu Configuracoes.
+6. Selecione Manual / Automatico / Livre / Somente leitura.
+7. Use + para nova conversa e nova aba; cada aba tem seu historico.
+8. Para testar: no modo Automatico, abra um site qualquer e peça para ir ao Gmail.
+
+ATENCAO: o modo Livre faz alteracoes sem pedir permissoes normais e pode produzir
+acoes indesejadas. Sites explicitamente bloqueados e operacoes financeiras
+permanecem protegidos. Nao use para testar em sistemas criticos.
+A edicao Advanced inclui permissao debugger concedida ao instalar; o botao
+interno NAO a revoga. Edicao Standard recomendada.
+Os testes sao automatizados/simulados. Validar no Chrome real antes de usar.

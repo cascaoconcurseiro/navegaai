@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "NavegaAI • Agente para o Navegador",
+  "short_name": "NavegaAI",
+  "description": "NavegaAI 3.3: navegação confiável sem página inicial obrigatória, isolamento e runtime Playwright opcional.",
+  "version": "3.3.0",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "tabs",
+    "scripting",
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "src/panel.html"
+  },
+  "action": {
+    "default_title": "Abrir NavegaAI"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "version_name": "3.2 RC · Isolated Runtime + Durable Recovery"
+}

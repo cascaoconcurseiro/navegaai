@@ -1,0 +1,47 @@
+name: NavegaAI quality gates
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run check
+      - run: npm test
+  runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r runtime/requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m unittest discover -s runtime/tests -v
+  release-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/build_editions.py
+      - name: Verify Standard and Advanced permissions
+        run: |
+          python - <<'PY'
+          import glob,json,zipfile
+          editions=glob.glob('../NavegaAI-v*-Standard.zip') + glob.glob('../NavegaAI-v*-Advanced-CDP.zip')
+          assert len(editions)==2,editions
+          for name in editions:
+              with zipfile.ZipFile(name) as z:
+                  m=json.loads(z.read('NavegaAI-Extension/manifest.json'))
+                  is_advanced='Advanced-CDP' in name
+                  assert ('debugger' in m['permissions'])==is_advanced,name
+                  assert m['background']['type']=='module'
+          PY

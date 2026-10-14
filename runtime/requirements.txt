@@ -1,0 +1,7 @@
+# Versions exercised against NavegaAI 3.1 release-candidate tests.
+# Keep updates behind CI + browser integration tests.
+fastapi==0.128.2
+uvicorn==0.48.0
+httpx==0.28.1
+playwright==1.57.0
+pydantic==2.13.5
