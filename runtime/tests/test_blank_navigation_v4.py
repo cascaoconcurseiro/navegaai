@@ -66,3 +66,48 @@ class BlankNavigation(unittest.IsolatedAsyncioTestCase):
 
 if __name__=='__main__':
     unittest.main()
+
+
+class RedirectApproval(unittest.IsolatedAsyncioTestCase):
+    async def test_login_redirect_requests_consent_without_replaying(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rt=Runtime(Path(directory)/'db.sqlite',Path(directory)/'profile')
+            page=Page()
+            page.url='https://mail.example/'
+            calls=[]
+            async def browser(workspace,url):return page
+            async def observe(p):return {'url':p.url,'snapshot':'Login necessário'}
+            async def action(p,name,args,mode,allowed,sensitive,baseline):
+                calls.append(name)
+                rt.blocked_navigations['work']='https://accounts.example'
+                raise RuntimeError('ERR_BLOCKED_BY_CLIENT')
+            n=0
+            async def model(model,messages,tools):
+                nonlocal n
+                n+=1
+                if n==1:
+                    return {'content':'','tool_calls':[{'id':'n1','type':'function',
+                        'function':{'name':'navigate','arguments':'{"url":"https://mail.example/"}'}}]}
+                return {'content':'Rever estado da página','tool_calls':[]}
+            rt._page=browser
+            rt._observe=observe
+            rt._action=action
+            rt.model_client=model
+            try:
+                job=await rt.submit(workspace='work',prompt='Abra a caixa de entrada',
+                    url='https://mail.example/',model='test',
+                    base_url='https://openrouter.ai/api/v1',api_key='fixture',approval_mode='auto')
+                for _ in range(100):
+                    status=rt.status(job)
+                    if status['approval']:break
+                    await asyncio.sleep(.005)
+                else:self.fail('Missing redirect authorization')
+                self.assertEqual(status['approval']['category'],'redirect_origin')
+                self.assertIn('https://accounts.example',status['approval']['label'])
+                self.assertEqual(calls,['navigate'])
+                rt.decide(job,status['approval']['requestId'],'approve')
+                await asyncio.wait_for(rt.tasks[job],timeout=5)
+                self.assertEqual(calls,['navigate'])  # No blind retries after uncertain transitions
+                self.assertTrue(any(e['event']=='redirect_origin_authorized'
+                    for e in rt.store.events(job)))
+            finally:await rt.shutdown()
