@@ -48,6 +48,15 @@ def origin_of(url: str) -> str:
     return f'{p.scheme}://{p.netloc}'
 
 
+def safe_origin(url: str) -> str:
+    if url == 'about:blank':
+        return 'blank'
+    try:
+        return origin_of(url)
+    except ValueError:
+        return 'unavailable'
+
+
 def classify_error(error: Exception) -> dict:
     message=str(error).casefold()
     if isinstance(error, PermissionError):
@@ -246,9 +255,11 @@ class Runtime:
         if not workspace or len(workspace)>128 or not prompt or len(prompt)>12000:
             raise ValueError('Conversa ou pedido inválido.')
         if approval_mode not in ('read_only','review','auto','skip'):raise ValueError('Modo de permissão inválido.')
-        url=valid_web_url(url)
+        if url!='about:blank':
+            url=valid_web_url(url)
         allowed=set(allowed_origins or [])
-        allowed.add(origin_of(url))
+        if url!='about:blank':
+            allowed.add(origin_of(url))
         for entry in allowed:
             if origin_of(entry)!=entry:raise ValueError('Origem de permissão inválida.')
         if not model or len(model)>180:raise ValueError('Modelo inválido.')
@@ -283,7 +294,7 @@ class Runtime:
                 raise ValueError('ID já usado para uma solicitação diferente.')
             return job
         self.store.create(job,workspace,prompt,model,url,fingerprint)
-        self.store.append(job,{'event':'requested','model':model,'url_origin':origin_of(url)})
+        self.store.append(job,{'event':'requested','model':model,'url_origin':safe_origin(url)})
         if resume_of:self.store.append(job,{'event':'resume_requested','detail':str(resume_of)[:48]})
         self.tasks[job]=asyncio.create_task(self._run(job,workspace,prompt,url,model,base_url,api_key,approval_mode,allowed,allow_sensitive,vision_enabled))
         return job
@@ -319,7 +330,7 @@ class Runtime:
         label=str(args.get('name') or args.get('url') or name)[:130]
         request_id=secrets.token_hex(16)
         request={'kind':'action','runId':job,'requestId':request_id,'tool':name,
-                 'label':label,'category':category,'detail':f'{name} · {origin_of(page.url)}',
+                 'label':label,'category':category,'detail':f'{name} · {safe_origin(page.url)}',
                  'expiresAt':time.time()+APPROVAL_TIMEOUT_SECONDS}
         future=asyncio.get_running_loop().create_future()
         self.pending_approvals[job]={'public':request,'future':future}
@@ -382,17 +393,20 @@ class Runtime:
                 page.on('requestfailed',netfail)
                 page.on('console',console)
                 page.on('pageerror',pageerror)
-            await page.goto(url,wait_until='domcontentloaded',timeout=20000)
+            if url!='about:blank':
+                await page.goto(url,wait_until='domcontentloaded',timeout=20000)
         return page
 
     async def _observe(self,page):
+        if page.url=='about:blank':
+            return {'url':'about:blank','snapshot':'Aba vazia. Use navigate com destino HTTP(S) solicitado pelo usuário. Nunca assuma que esta aba está em https://www.google.com/. '}
         try: snap=await page.locator('body').aria_snapshot(timeout=6000)
         except Exception: snap=(await page.locator('body').inner_text(timeout=5000))
         return {'url':page.url,'snapshot':str(snap)[:MAX_TEXT]}
 
     async def _action(self,page,name,args,mode,allowed,sensitive_ok,baseline):
         # Enforce site scope before EVERY read or action, including observe/verify/diagnose.
-        if origin_of(page.url) not in allowed:
+        if safe_origin(page.url) not in allowed and not (name=='navigate' and page.url=='about:blank'):
             raise PermissionError('A página foi redirecionada para uma origem não autorizada. Execução suspensa.')
         if name=='observe':return {'ok':True,**await self._observe(page)},False
         if name=='diagnose':
@@ -414,7 +428,7 @@ class Runtime:
                 if time.monotonic()>=deadline:
                     return {'ok':True,'verified':False,'evidence':'insufficient_evidence'},False
                 await asyncio.sleep(0.12)
-        if mode=='read_only':raise PermissionError('Modo somente leitura: não pode navegar nem modificar sites.')
+        if mode=='read_only' and name!='navigate':raise PermissionError('Modo somente leitura: não pode modificar sites.')
         before=await self._observe(page)
         if name=='navigate':
             target=valid_web_url(args['url'])
@@ -477,9 +491,9 @@ class Runtime:
                 try:
                     self.store.set(job,status='running')
                     self.store.append(job,{'event':'started'})
-                    self.workspace_allowed[workspace]=set(allowed)
+                    self.workspace_allowed[workspace]=allowed
                     page=await self._page(workspace,url)
-                    if origin_of(page.url) not in allowed:
+                    if page.url!='about:blank' and safe_origin(page.url) not in allowed:
                         await page.goto(url,wait_until='domcontentloaded',timeout=20000)
                     messages=[{'role':'system','content':SYSTEM},{'role':'user','content':prompt}]
                     mutations=0;verified=0;failures=0
@@ -493,7 +507,7 @@ class Runtime:
                         # Force the first tool call to be an observation, not a blind click.
                         if step==1:
                             observed=await self._observe(page)
-                            self.store.append(job,{'event':'observed','step':step,'url_origin':origin_of(page.url)})
+                            self.store.append(job,{'event':'observed','step':step,'url_origin':safe_origin(page.url)})
                             messages.append({'role':'user','content':'<browser_observation source=untrusted_page>\n'+json.dumps(observed,ensure_ascii=False)+'\n</browser_observation>'})
                         started=time.monotonic()
                         answer=await self._call_model(model,base,key,messages,vision_enabled=vision_enabled)
@@ -532,6 +546,16 @@ class Runtime:
                                 if name=='verify':
                                     if not pending_proof or args.get('action_id')!=pending_proof['action_id']:
                                         raise ValueError('Prova inválida: indique o action_id da ação pendente.')
+                                # New origins require one user authorization before navigation.
+                                approved_origin_this_step=False
+                                if name=='navigate':
+                                    destination=origin_of(args['url'])
+                                    if destination not in allowed:
+                                        await self._request_approval(job,'authorize_origin',
+                                            {'name':destination},page,category='new_origin')
+                                        allowed.add(destination)
+                                        approved_origin_this_step=True
+                                        self.store.append(job,{'event':'origin_authorized','url_origin':destination})
                                 # Auto keeps routine work uninterrupted; sensitive steps pause for review.
                                 sensitive_step=False
                                 if name=='click':
@@ -540,7 +564,7 @@ class Runtime:
                                     else:
                                         estimated_risk=classify_action(str(args.get('role','')),str(args.get('name','')))
                                     sensitive_step=estimated_risk.needs_approval
-                                if is_mutation and (mode=='review' or (mode=='auto' and sensitive_step)):
+                                if is_mutation and not approved_origin_this_step and (mode=='review' or (mode=='auto' and sensitive_step)):
                                     # Approval is requested immediately before invoking the browser.
                                     # Never send tool arguments containing field contents to the UI.
                                     await self._request_approval(job,name,args,page,category=estimated_risk.category if name=='click' else 'mutation')
@@ -548,7 +572,7 @@ class Runtime:
                                         _, rechecked_risk=await inspect_click(page,str(args.get('role','')),str(args.get('name','')))
                                         if rechecked_risk.fingerprint!=estimated_risk.fingerprint:
                                             raise ApprovalDeclined('Alvo mudou depois da autorização. Nenhuma ação enviada.')
-                                action_mode='approved_once' if (mode=='review' or (mode=='auto' and sensitive_step)) else mode
+                                action_mode='approved_once' if (approved_origin_this_step or mode=='review' or (mode=='auto' and sensitive_step)) else mode
                                 if name=='observe_visual':
                                     if not vision_enabled:
                                         raise PermissionError('Captura visual não autorizada pelo usuário.')
@@ -570,7 +594,7 @@ class Runtime:
                                 if mutated:
                                     self.store.set(job,url=page.url)
                                     self.store.append(job,{'event':'checkpoint','step':step,
-                                                          'tool':name,'url_origin':origin_of(page.url)})
+                                                          'tool':name,'url_origin':safe_origin(page.url)})
                                     if result.get('effect')=='no_observed_change':
                                         no_change+=1
                                         if no_change>=3:
