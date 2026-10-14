@@ -26,3 +26,7 @@
 - Evidência de interface não equivale à confirmação independente do serviço externo.
 - O armazenamento local ainda conserva o texto das solicitações em SQLite e precisa de retenção e proteção apropriadas para produção.
 - Não foi validada a extensão completa em um Chrome desktop autenticado neste ambiente.
+
+## Navegação a partir de aba vazia
+
+O runtime não depende de abrir o Google para começar uma tarefa. Uma conversa pode partir de `about:blank`; destinos HTTP(S) novos passam por consentimento de origem. Quando um redirecionamento de autenticação aponta para outra origem, o runtime o bloqueia previamente, registra apenas o domínio e pede autorização. Não há repetição automática de cliques ou envios incertos após a falha.
