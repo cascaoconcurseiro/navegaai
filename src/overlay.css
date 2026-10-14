@@ -1,0 +1,8 @@
+#__navega_overlay_v3{position:fixed!important;inset:0!important;box-sizing:border-box!important;border:4px solid #2288ff!important;z-index:2147483647!important;pointer-events:none!important;background:transparent!important;box-shadow:inset 0 0 16px rgba(20,119,255,.15),0 0 18px rgba(39,140,255,.28)!important;animation:navega-pulse 2s infinite alternate!important}
+#__navega_overlay_v3 .navega-label{position:absolute;top:0;right:0;padding:7px 11px;background:#1671ee;color:white;font:700 12px/1.1 Arial,sans-serif;border-radius:0 0 0 10px;letter-spacing:.2px}
+#__navega_overlay_v3 .navega-cursor{position:absolute;left:22%;top:24%;transition:left .42s cubic-bezier(.2,.7,.2,1),top .42s cubic-bezier(.2,.7,.2,1);width:21px;height:25px;filter:drop-shadow(1px 2px 3px #0008)}
+#__navega_overlay_v3 .navega-cursor:before{content:'➤';display:block;color:#0a7dff;-webkit-text-stroke:1px white;font:bold 25px Arial;transform:rotate(-35deg);transform-origin:30% 50%}
+#__navega_overlay_v3 .navega-ring{position:absolute;border:2px solid #41a5ff;border-radius:50%;width:30px;height:30px;left:-14px;top:-14px;opacity:0;transform:scale(.5)}
+#__navega_overlay_v3 .navega-ring.pop{animation:navega-pop .65s ease-out}
+@keyframes navega-pulse{to{border-color:#4abfff;box-shadow:inset 0 0 22px rgba(50,160,255,.24),0 0 28px rgba(40,125,255,.34)}}
+@keyframes navega-pop{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(2.5)}}

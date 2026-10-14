@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NavegaAI</title><link rel="stylesheet" href="panel.css">
+</head>
+<body data-theme="dark">
+  <div class="app" id="app">
+    <header class="header">
+      <div class="brand" aria-label="NavegaAI"><span class="brandmark" aria-hidden="true">✳</span><span class="brandname">Navega<span>AI</span></span><span class="beta">3.2 RC</span></div>
+      <nav class="headeractions" aria-label="Navegação principal">
+        <button class="iconbtn" id="conversationsBtn" title="Minhas conversas" aria-label="Ver conversas">▤</button>
+        <button class="iconbtn" id="newChatBtn" title="Nova conversa" aria-label="Nova conversa">＋</button>
+        <button class="iconbtn" id="traceBtn" title="Atividade da execução" aria-label="Abrir rastreabilidade">◷</button><button class="iconbtn" id="toolsBtn" title="Memória, agendamentos e auditoria" aria-label="Central de controle">☷</button>
+        <button class="iconbtn" id="settingsBtn" title="Configurações e permissões" aria-label="Configurações">⚙</button>
+      </nav>
+    </header>
+    <section id="permissionPopover" class="permission-popover hidden" aria-label="Modo de permissões">
+      <b class="permission-title">Como o agente deve agir?</b>
+      <button data-quick-mode="review" class="permission-option"><span class="permission-symbol">◇</span><span><b>Pedir aprovação</b><small>Confirme cada alteração na página</small></span><span class="permission-check">✓</span></button>
+      <button data-quick-mode="auto" class="permission-option"><span class="permission-symbol">✧</span><span><b>Aprovar automaticamente</b><small>Age livremente nas tarefas comuns; confirma riscos altos</small></span><span class="permission-check">✓</span></button>
+      <button data-quick-mode="skip" class="permission-option"><span class="permission-symbol">⚡</span><span><b>Livre · pular aprovações</b><small>Sem confirmações normais; somente limites técnicos e bloqueios explícitos</small></span><span class="permission-check">✓</span></button>
+      <button data-quick-mode="read_only" class="permission-option"><span class="permission-symbol">◉</span><span><b>Somente leitura</b><small>Observa e analisa, sem alterar sites</small></span><span class="permission-check">✓</span></button>
+      <div class="popover-footer"><span class="popover-hint">O risco é estimado por regras heurísticas.</span><button id="manageSitePermsBtn" class="text-btn">Permissões por site ↗</button></div>
+    </section>
+    <section class="workspace-strip" aria-live="polite">
+      <span class="work-indicator" id="backendDot"></span><span class="workspace-name" id="lockedTab">Selecione uma aba para começar</span>
+      <span class="workspace-mode" id="visualMode">Uma aba por conversa</span>
+    </section>
+    <main id="chatView" class="chatview">
+      <div class="welcome" id="welcome">
+        <div class="welcomeicon" aria-hidden="true">✳</div>
+        <p class="eyebrow">UM AGENTE NO SEU NAVEGADOR</p>
+        <h1>O que vamos<br><em>fazer na web?</em></h1>
+        <p class="welcome-copy">Leia, explore e execute tarefas na aba que você escolher. Você acompanha cada etapa e decide o que pode ser feito.</p>
+        <div class="prompts" aria-label="Sugestões para começar">
+          <button class="suggestion" data-prompt="Resuma esta página"><span class="prompticon">▤</span><span><b>Resumir esta página</b><small>Os pontos mais importantes</small></span><span class="chev">↗</span></button>
+          <button class="suggestion" data-prompt="Liste os elementos interativos desta página"><span class="prompticon">⌗</span><span><b>Explorar a interface</b><small>Botões, campos e links</small></span><span class="chev">↗</span></button>
+
+        </div>
+      </div>
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <div id="streamPreview" class="stream-preview hidden" aria-live="off"></div>
+    </main>
+    <section id="siteApproval" class="approval site-approval hidden" aria-live="assertive">
+      <div class="approval-eyebrow">PERMISSÃO DO SITE</div><h2>Permitir acesso a esta aba?</h2>
+      <p id="siteApprovalDetail" class="approvaldetail"></p>
+      <div class="approvalactions wrap"><button id="siteDenyBtn" class="btn ghost">Agora não</button><button id="siteOnceBtn" class="btn secondary">Somente esta tarefa</button><button id="siteAlwaysBtn" class="btn primary">Sempre neste site</button></div>
+    </section>
+    <section id="cdpRunApproval" class="approval cdp-approval hidden" aria-live="assertive">
+      <div class="approval-eyebrow warning">ACESSO AVANÇADO · RISCO ELEVADO</div><h2>Habilitar CDP nesta execução?</h2>
+      <p class="approvaldetail">A depuração pode acessar informações sensíveis desta aba. O Chrome pode mostrar um aviso de depuração. A autorização do NavegaAI vale apenas para esta execução.</p>
+      <div class="approvalactions"><button id="cdpDenyBtn" class="btn ghost">Usar modo normal</button><button id="cdpAllowBtn" class="btn primary">Habilitar nesta tarefa</button></div>
+    </section>
+    <section id="approval" class="approval hidden" aria-live="assertive">
+      <div class="approval-eyebrow">AÇÃO AGUARDANDO SUA DECISÃO</div><h2>Autorizar esta ação?</h2>
+      <div id="approvalDetail" class="approvaldetail"></div>
+      <div class="approvalactions"><button id="rejectBtn" class="btn ghost">Recusar</button><button id="approveBtn" class="btn primary">Permitir uma vez ↗</button></div>
+    </section>
+    <div id="noticeBar" class="notice-bar hidden" role="status"><span id="noticeText"></span><button id="dismissNotice" class="iconbtn" aria-label="Fechar aviso">×</button></div>
+    <footer class="composer">
+      <div class="composerinner"><textarea id="promptInput" placeholder="Peça algo ao NavegaAI..." rows="2" aria-label="Mensagem"></textarea>
+    <div class="controlbar">
+      <div class="selectorwrap">
+        <button class="model-trigger" id="modelPickerBtn" aria-label="Escolher modelo de IA" aria-expanded="false" aria-controls="modelPopover">
+          <span class="model-orb" aria-hidden="true">✦</span><span class="model-trigger-label"><span id="modelLabel">Demonstração</span><small id="providerLabel">Modo local</small></span><span class="dropdown-arrow">⌄</span>
+        </button>
+        <section id="modelPopover" class="model-popover hidden" aria-label="Seletor de modelos">
+          <div class="popover-title"><b>Escolha o modelo</b><button class="iconbtn small" id="closeModelPicker" aria-label="Fechar seletor">×</button></div>
+          <label class="search-field"><span aria-hidden="true">⌕</span><input id="quickModelSearch" placeholder="Pesquisar todos os modelos..." aria-label="Buscar modelos" autocomplete="off" spellcheck="false"></label>
+          <div id="quickModelStatus" class="popover-hint">Sincronização automática do OpenRouter</div>
+          <div id="quickModelList" class="model-results" role="listbox" aria-label="Modelos disponíveis"></div>
+          <div class="popover-footer"><button id="quickModelSync" class="text-btn">↻ Atualizar catálogo</button><button id="quickModelSettings" class="text-btn">Configurar API ↗</button></div>
+        </section>
+      </div>
+      <button class="permission-trigger" id="permissionBtn" title="Editar autonomia e permissões"><span id="permissionIcon">◇</span> <span id="permissionLabel">Pedir aprovação</span> <span>⌄</span></button>
+      <button id="sendBtn" class="sendbtn" title="Enviar mensagem" aria-label="Enviar">↑</button><button id="stopBtn" class="stopbtn hidden" title="Interromper execução" aria-label="Interromper">■</button>
+    </div>
+        <div class="composer-actions hidden"><button id="connectionBtn" class="connection-pill" title="Configurar conexão OpenRouter">Configurar API</button><span class="shortcut-hint">↵ para enviar</span></div>
+      </div>
+<div class="activity-ribbon hidden" id="activityRibbon"><span id="liveActivity">Nenhuma ação em execução</span><button id="openTraceBtn" title="Ver detalhes da execução">Ver atividade ↗</button></div>
+      <div class="footline hidden"><span class="run-state"><span id="runStateDot"></span><span id="runStatus">Pronto para começar</span></span><span id="stepStatus">Aprovação supervisionada</span></div>
+    </footer>
+  </div>
+  <section id="conversationsView" class="settingsview hidden" aria-label="Minhas conversas">
+    <div class="settingshead"><button id="conversationsBackBtn" class="iconbtn" aria-label="Voltar">←</button><div><b>Minhas conversas</b><small>Uma sessão e uma aba de trabalho por conversa</small></div><button id="conversationsNewBtn" class="iconbtn" title="Criar outra conversa">＋</button></div>
+    <div class="conversations-intro">Fechar uma aba interrompe a execução nela, mas preserva o histórico. Abra outra conversa a qualquer momento sem encerrar as demais.</div>
+    <div id="conversationsList" class="conversations-list" aria-live="polite"></div>
+    <div class="conversation-foot"><button id="conversationsRefreshBtn" class="btn ghost">↻ Atualizar lista</button></div>
+  </section>
+  <section id="settingsView" class="settingsview hidden" aria-label="Configurações">
+    <div class="settingshead"><button id="backBtn" class="iconbtn" aria-label="Voltar">←</button><div><b>Configurações</b><small>Modelos, conexão e privacidade</small></div><button id="themeBtn" class="iconbtn theme-btn" aria-label="Alternar tema" title="Alternar tema">◐</button></div>
+    <div class="settingsbody">
+      <div class="setup-guide"><b>Conecte seu provedor de IA</b><p>1. Escolha OpenRouter abaixo. 2. Cole sua chave no campo <b>Chave do OpenRouter</b>. 3. Salve. Depois escolha o modelo diretamente na caixa de mensagem.</p><a id="getOpenRouterKey" href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer">Criar ou copiar chave no OpenRouter ↗</a></div>
+      <h2>Conexão com a IA</h2>
+      <div class="setting-card"><label>Provedor<select id="provider"><option value="demo">Demonstração sem chave</option><option value="openrouter">OpenRouter · catálogo automático</option><option value="deepseek">DeepSeek</option><option value="qwen">Qwen / DashScope</option><option value="custom">API compatível OpenAI</option></select></label>
+        <div id="apiFields" class="hidden"><label><span id="apiKeyLabel">Chave de API do provedor</span><input id="apiKey" type="password" placeholder="Cole a chave aqui (sk-or-v1-...)" autocomplete="off" spellcheck="false"></label><div class="inline"><span id="keyStatus" class="key-state">● Não configurada</span><button id="toggleKeyBtn" type="button" class="btn ghost">Mostrar chave</button></div><div id="catalogFields" class="catalog hidden"><div class="inline"><button class="btn secondary" id="syncModelsBtn">↻ Sincronizar catálogo</button><span id="catalogStatus" class="statusmsg"></span></div><label>Buscar modelos<input id="modelSearch" placeholder="Modelo, família, laboratório..." spellcheck="false"></label><label class="checkrow"><input type="checkbox" id="toolsOnly" checked> Apenas modelos com ferramentas</label><label>Escolher modelo<select id="modelSelect"><option value="">Selecione um modelo</option></select></label><p id="modelInfo" class="hint"></p></div><details class="advanced-settings"><summary>Modelo manual e URL personalizada (avançado)</summary><label class="advanced-label">Identificador do modelo<input id="model" placeholder="nome/modelo" spellcheck="false"></label><label class="advanced-label">URL da API<input id="baseURL" spellcheck="false" placeholder="https://.../v1"></label></details><label class="checkrow"><input type="checkbox" id="rememberKey"> Guardar chave entre reinicializações</label><p class="hint">Por padrão a chave é mantida na sessão do Chrome. Se salvar, ficará no armazenamento local da extensão, sem criptografia adicional.</p></div></div>
+      <h2>Controle do navegador</h2>
+      <div class="setting-card"><label>Motor de automação<select id="backend"><option value="chrome">Chrome atual · somente aba vinculada</option><option value="neo">BrowserOS neo · MCP (restrito)</option><option value="runtime">Runtime local · Playwright (janela separada)</option></select></label>
+        <div id="runtimeFields" class="hidden"><p class="hint"><b>Modo avançado opt-in.</b> Um Chromium gerenciado separado executa suas tarefas. Os logins do Chrome pessoal não são compartilhados. As tarefas continuam se o painel fechar, mas exigem o processo Python aberto.</p>
+        <label>URL do Runtime local<input id="runtimeUrl" spellcheck="false" value="http://127.0.0.1:8765/" placeholder="http://127.0.0.1:8765/"></label>
+        <label>Token do Runtime (somente nesta sessão)<input id="runtimeToken" type="password" autocomplete="off" spellcheck="false" placeholder="Cole o token exibido no terminal"></label>
+        <label>Outras origens permitidas (separadas por vírgulas)<input id="runtimeOrigins" spellcheck="false" placeholder="https://mail.google.com, https://github.com"></label>
+        <p class="hint">O Runtime bloqueia envios, pagamentos e exclusões sem uma autorização especial independente, inclusive no modo Livre. Ele não executa com o computador desligado. Consulte runtime/README.md antes de ativar.</p></div>
+        <div id="neoFields" class="hidden"><label>Conexão<select id="neoTransport"><option value="direct">Direta</option><option value="bridge">Ponte local</option></select></label><label>URL MCP<input id="neoUrl" placeholder="http://127.0.0.1:9200/mcp" spellcheck="false"></label><div id="bridgeFields" class="hidden"><label>Token da ponte<input id="bridgeToken" type="password" autocomplete="off"></label><p class="hint">Use bridge/iniciar-ponte-windows.bat, copie o token apresentado e configure http://127.0.0.1:9842/mcp.</p></div><div class="inline"><button class="btn secondary" id="testNeoBtn">Testar integração</button><span id="neoTestStatus" class="statusmsg"></span></div><p class="hint">O neo está desativado para ações até garantir isolamento verificável por aba.</p></div>
+        <label>Modo de aprovação<select id="approvalMode"><option value="review">Manual · cada ação modificadora</option><option value="auto">Automático · age sozinho, confirma riscos altos</option><option value="skip">Livre · pular aprovações (risco elevado)</option><option value="read_only">Somente leitura · sem modificações</option></select></label><p class="hint">No modo Livre a IA não pede confirmações normais. Bloqueios explícitos e campos protegidos permanecem. A classificação de risco é heurística e não reproduz os sistemas privados do Claude.</p>
+        <label>Etapas máximas por execução <span id="maxStepsLabel" class="pill">20</span><input id="maxSteps" type="range" min="1" max="40" value="20"></label></div>
+      <h2>Experiência de conversa</h2>
+      <div class="setting-card"><label class="checkrow"><input type="checkbox" id="streamResponses" checked> Receber respostas progressivas (streaming)</label><label class="checkrow"><input type="checkbox" id="visionEnabled"> Permitir capturas de tela para modelos com visão</label><p class="hint">Desligado por padrão. Capturas visuais podem incluir mensagens, nomes e dados privados. Ao ativar, a imagem da aba visível pode ser enviada ao provedor de IA.</p><label class="checkrow"><input type="checkbox" id="chatDebugEvents"> Mostrar etapas técnicas e erros no chat (modo avançado)</label><p class="hint">Desligado por padrão: mostra apenas pedidos, respostas e estado geral. O painel Atividade continua registrando todas as ações. Ao ativar, eventos resumidos aparecem no chat; valores digitados são omitidos.</p></div>
+      <h2>Permissões por site</h2><div class="setting-card"><p class="hint">Na primeira tarefa em um site, o NavegaAI pergunta se pode ler e agir nele. Permissões permanentes podem ser revogadas a qualquer momento.</p><div class="inline"><button id="allowCurrentSiteBtn" class="btn secondary">Permitir site atual</button><button id="blockCurrentSiteBtn" class="btn ghost">Bloquear site atual</button></div><div id="sitePermissionsList" class="site-list"></div><p id="sitePermissionsStatus" class="statusmsg"></p></div>
+      <h2>Acesso avançado ao CDP</h2>
+      <div class="setting-card cdp-card"><span class="risk-label">⚠ RISCO ELEVADO</span><label class="checkrow"><input type="checkbox" id="realInput"> Ativar controles CDP avançados</label><p class="hint">O Chrome DevTools Protocol permite depuração e eventos reais de mouse na aba. Pode expor dados sensíveis. O NavegaAI solicita confirmação novamente antes de cada execução.</p><p id="cdpAvailability" class="hint"></p><div id="cdpDisclosure" class="cdp-disclosure hidden"><b>Antes de ativar</b><p>O Chrome exige que a permissão <code>debugger</code> seja declarada na instalação. Desligar esta opção impede seu uso pelo NavegaAI, mas <b>não revoga</b> a permissão do Chrome. Para removê-la, desinstale a extensão ou utilize uma edição sem CDP.</p><label class="checkrow"><input type="checkbox" id="cdpAcknowledged"> Entendo o alcance e os riscos dessa permissão</label></div></div>
+      <div class="setting-card privacy"><b>Privacidade dos seus dados</b><p>Ao usar um provedor externo, o texto selecionado da página e argumentos das ferramentas podem ser enviados à API escolhida. Não use contas ou informações críticas sem compreender os riscos.</p></div>
+      <button class="btn primary save" id="saveSettingsBtn">Salvar alterações</button><span id="saveStatus" class="statusmsg" aria-live="polite"></span>
+    </div>
+  </section>
+  <section id="toolsView" class="settingsview hidden" aria-label="Central de controle">
+    <div class="settingshead"><button id="toolsBackBtn" class="iconbtn" aria-label="Voltar">←</button><div><b>Central de controle</b><small>Memória · agendamentos · rastreabilidade</small></div></div>
+    <div class="settingsbody">
+      <h2>Habilidades sugeridas e verificadas</h2><p class="hint">Uma tarefa com evidência de conclusão pode sugerir um procedimento reutilizável. Você precisa aprová-lo antes de usá-lo novamente; o agente ainda verificará cada ação.</p><div id="skillsList" class="itemlist"></div><h2>Memória por site</h2><p class="hint">Informações salvas localmente para o domínio atual, somente quando você solicitar.</p><p id="memoryDomain" class="hint"></p><label>Nova memória<textarea id="memoryInput" rows="3" placeholder="Prefiro relatórios curtos em português..."></textarea></label><button id="memoryAddBtn" class="btn secondary">Salvar memória</button><div id="memoryList" class="itemlist"></div>
+      <h2>Tarefas agendadas</h2><label>Instrução de leitura<textarea id="cronPrompt" rows="3" placeholder="Resuma as mudanças visíveis nesta página"></textarea></label><label>Expressão cron (hora local)<input id="cronExpr" value="0 9 * * *" placeholder="0 9 * * *"></label><p class="hint">Ex.: 0 9 * * * = todos os dias às 09h. Cron em modo leitura, separado das conversas interativas. Executa com Chrome aberto, podendo usar aba temporária do site autorizado; ao reiniciar pode recuperar uma execução vencida. Não inicia envios automaticamente.</p><button id="cronAddBtn" class="btn secondary">Criar agendamento</button><div id="cronList" class="itemlist"></div>
+      <h2>Auditoria de execuções</h2><button id="toolsTraceBtn" class="btn secondary">Abrir linha do tempo por conversa ↗</button><div class="inline audit-buttons"><button id="auditExportBtn" class="btn secondary">↓ Exportar JSONL</button><button id="auditVerifyBtn" class="btn ghost">Verificar integridade</button></div><button id="historyBtn" class="btn ghost">Baixar trilha de auditoria</button><p class="hint" id="auditStatus">Eventos incluem execução, aba, modelo, decisão, duração e encadeamento por hash. Os hashes não oferecem proteção criptográfica contra um atacante com controle total do armazenamento.</p>
+    </div>
+  </section>
+  <section id="traceView" class="settingsview hidden" aria-label="Atividade e rastreabilidade">
+    <div class="settingshead"><button id="traceBackBtn" class="iconbtn" aria-label="Voltar à conversa">←</button><div><b>Atividade e auditoria</b><small id="traceSubtitle">Ações da conversa atual · atualizadas ao vivo</small></div><button id="traceRefreshBtn" class="iconbtn" title="Atualizar trilha">↻</button></div>
+    <div class="trace-intro">O chat mostra apenas os resultados. Aqui ficam pedidos, ações, verificações, decisões, falhas e duração, sem senhas nem conteúdo sensível de campos.</div>
+    <div class="trace-metrics"><span><b id="traceTotal">0</b><small>Eventos</small></span><span><b id="traceFails">0</b><small>Falhas</small></span><span><b id="traceTime">—</b><small>Duração</small></span></div>
+    <div class="trace-controls"><label>Filtrar<select id="traceFilter"><option value="all">Todos os eventos</option><option value="tools">Ferramentas e verificações</option><option value="errors">Erros e alertas</option><option value="decisions">Aprovações e permissões</option></select></label><button id="traceReplayBtn" class="btn secondary">▶ Replay</button><button id="traceExportBtn" class="btn secondary">↓ Exportar</button></div>
+    <div class="trace-source">Fonte: <span id="traceSource">Histórico da conversa</span></div><div id="traceList" class="trace-list" aria-live="polite"></div>
+    <div class="trace-bottom"><button id="traceGlobalExportBtn" class="btn ghost">Exportar auditoria completa</button><p>Registros resumidos com identificador da tarefa. A integridade criptográfica não impede que alguém com acesso ao armazenamento altere e recalcule toda a cadeia.</p></div>
+  </section>
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

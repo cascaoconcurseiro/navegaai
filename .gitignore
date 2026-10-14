@@ -1,0 +1,34 @@
+# Python runtime and credentials
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+access.token
+*.token
+.env
+.env.*
+!.env.example
+
+# Browser profiles and local state
+profiles/
+profile/
+user-data/
+playwright-report/
+test-results/
+.runtime-data/
+
+# JavaScript dependencies and outputs
+node_modules/
+dist/
+build/
+coverage/
+*.log
+*.zip
+.DS_Store
+Thumbs.db

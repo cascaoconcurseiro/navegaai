@@ -1,25 +1,40 @@
-# NavegaAI 3.3 RC — Navigation-first / HTTPS reliability
+# NavegaAI 3.3 RC — Navigation-First / HTTPS reliability
 
-Status: **candidata para testes controlados**. Não foi homologada em um Chrome desktop autenticado e não possui benchmark comprovado contra Claude.
+Status: **release candidate para testes controlados**. Não está homologada como equivalente ao Claude; não foi validada instalada no Chrome desktop real autenticado.
 
-## Problemas tratados no pacote 3.3
+## Falhas concretas corrigidas
 
-1. Nova conversa começa em about:blank ou chrome://newtab, sem forçar navegação externa ao Google. O agente recebe uma observação navigationOnly e deve usar navigate_tab com URL HTTP(S) explicitamente solicitada.
-2. chrome.tabs.update resolve antes de o documento estar necessariamente carregado. A execução aguarda a URL comprometida e estado complete, sem aceitar o status obsoleto da página anterior.
-3. Timeout ou interrupção gera resultado indeterminado, sem repetir operações potencialmente irreversíveis.
-4. Páginas chrome-error:// são classificadas como falha/bloqueio de navegação. Restrições de rede não são contornadas.
-5. Escopo por origem continua obrigatório antes da leitura do DOM; redirecionamentos para origem não autorizada bloqueiam a próxima operação.
+1. **Nova conversa sem homepage:** uma aba `about:blank` ou `chrome://newtab` é representada como `navigationOnly`, sem navegação automática para Google. A ferramenta `get_page` oferece ao modelo instruções claras para usar `navigate_tab` com destino web completo. Ações DOM permanecem proibidas antes do commit da página web.
+2. **Confirmação de navegação:** o retorno de `chrome.tabs.update` não é mais tratado como carregamento concluído. O executor exige URL comprometida e status `complete`, distinguindo o estado antigo, `pendingUrl` e redirecionamento. Navegação não confirmada lança `NAVEGACAO_SEM_CONFIRMACAO`, sem repetir cegamente a operação.
+3. **Diagnóstico de página de erro:** `chrome-error://` produz `NAVEGACAO_BLOQUEADA` sem alegação de sucesso. Falhas de DNS/política de rede não são resolvidas por esta alteração.
+4. **Redirecionamentos e escopo:** a origem final de autenticação (ex.: `accounts.google.com`) passa por uma **nova autorização explícita**; caso negada, ler ou agir após o redirecionamento continua bloqueado. `about:blank` não é considerado um site autorizado.
+5. **Aba inalterada:** o motor opera somente na aba da conversa e não cria guias auxiliares para contornar páginas protegidas.
 
-## Evidência local
+## Testes
 
-Na árvore de desenvolvimento completa, foram aprovados 118 testes JavaScript, 21 Python, smoke test de motor DOM em Chromium e verificação das edições Standard (sem debugger) / Advanced CDP (com debugger). Esses números **não são benchmarks de produtividade ou segurança**.
+```bash
+npm run check
+npm test
+python -m unittest discover -s runtime/tests -q
+python scripts/smoke_browser.py
+python scripts/build_editions.py
+```
 
-## Pendências para validação
+A suíte JavaScript inclui simulações de transições de estado do Chrome para navegação; os testes Python fazem execução sobre página sintética no Chromium. Não são testes de Gmail autenticado nem de comparações com Claude.
 
-- Importar e revisar a árvore-fonte completa e seus testes nesta branch.
-- Validar instalação Chrome MV3 desktop, service worker, runtime e interações com HTTPS real.
-- Executar tarefas Gmail em conta de teste com conferência de entrega; nenhum envio real foi validado.
-- Medir taxa de sucesso, custo e recuperação em tarefas reprodutíveis.
-- Manter ações financeiras, publicação e envios sem repetição automática após resultados incertos.
+## Limites
 
-**Esta branch contém somente um subconjunto da implementação; não faça merge como release instalável.**
+- Não é possível injetar scripts ou controlar páginas internas `chrome://`, `chrome-extension://` e perfis administrativamente bloqueados.
+- Chrome MV3 pode suspender o service worker; tarefas longas precisam do runtime separado quando aplicável.
+- A navegação HTTP(S) pode falhar por rede, autenticação e políticas do navegador. O motor não pode nem deve contorná-las.
+- Cliques que enviam dados não devem ser repetidos automaticamente quando o resultado é indeterminado.
+- Precisa de teste de instalação real, Chrome com rede e conta de laboratório. Não há taxa comprovada de sucesso frente a agentes comerciais.
+
+## Checklist de QA no Windows
+
+1. Desative extensões NavegaAI antigas e carregue a pasta Standard em `chrome://extensions`.
+2. Crie uma conversa nova, deixe a aba vazia e peça: “Abra https://example.com”. Confirme ausência de navegação implícita a Google e destino carregado na mesma aba.
+3. Em outra conversa, peça navegação entre dois domínios permitidos; confirme aprovação conforme configuração e isolamento das abas.
+4. Teste uma URL inválida e uma página Chrome protegida; confirme recusa segura, sem falsa mensagem de sucesso.
+5. Simule conexão cortada durante navegação; confirme `NAVEGACAO_SEM_CONFIRMACAO`, sem retry automático.
+6. Reexecute `npm test` e a suíte Python antes de promover a candidata.
