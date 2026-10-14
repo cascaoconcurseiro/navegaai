@@ -65,7 +65,7 @@ export function createRuntimeController({storage,chrome,log}) {
         base_url:settings.baseURL||'https://openrouter.ai/api/v1',api_key:apiKey,
         approval_mode:settings.approvalMode,
         allowed_origins:[new URL(url).origin,...(settings.runtimeOrigins||'').split(',').map(x=>x.trim()).filter(Boolean)],
-        allow_sensitive:false,
+        allow_sensitive:false,vision_enabled:settings.visionEnabled===true,
         resume_of:isContinuation(userMessage)&&['needs_review','interrupted','error','cancelled'].includes(previous.status)?(previous.runtimeJobId||null):null
       }});
       await change(tabId,{status:'running'});
