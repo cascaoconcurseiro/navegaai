@@ -95,7 +95,7 @@ class TaskRequest(BaseModel):
 @app.get('/health')
 async def health(authorization: str|None=Header(default=None)):
     await auth(authorization)
-    return {'ok':True,'service':'NavegaAI Desktop Runtime','version':'3.2-rc','isolation':'managed_profile'}
+    return {'ok':True,'service':'NavegaAI Desktop Runtime','version':'4.0-rc.1','isolation':'managed_profile'}
 
 @app.post('/tasks')
 async def tasks(req:TaskRequest,authorization:str|None=Header(default=None)):
