@@ -186,6 +186,7 @@ class Runtime:
         self.workspace_locks={}
         self.limit=asyncio.Semaphore(3)
         self.pending_approvals={}
+        self.blocked_navigations={}  # only origin, no secrets or query strings
 
 
     async def ensure_browser(self, workspace='__default__'):
@@ -230,6 +231,7 @@ class Runtime:
                         # Block out-of-scope document navigation BEFORE the server responds.
                         authorized=self.workspace_allowed.get(workspace,set())
                         if destination not in authorized:
+                            self.blocked_navigations[workspace]=destination
                             await route.abort('blockedbyclient')
                             return
                     await route.continue_()
@@ -405,14 +407,14 @@ class Runtime:
         return {'url':page.url,'snapshot':str(snap)[:MAX_TEXT]}
 
     async def _action(self,page,name,args,mode,allowed,sensitive_ok,baseline):
-        # Enforce site scope before EVERY read or action, including observe/verify/diagnose.
+        # Diagnose reveals only metadata even after a denied navigation.
+        if name=='diagnose':
+            issues=list(self.diagnostics.get(id(page),[]))[-15:]
+            return {'ok':True,'issues':issues},False
+        # Restrict all other reads and actions to the authorized origin.
         if safe_origin(page.url) not in allowed and not (name=='navigate' and page.url=='about:blank'):
             raise PermissionError('A página foi redirecionada para uma origem não autorizada. Execução suspensa.')
         if name=='observe':return {'ok':True,**await self._observe(page)},False
-        if name=='diagnose':
-            # Only metadata: never reveal arbitrary scripts, request bodies or credentials.
-            items=list(self.diagnostics.get(id(page),[]))[-15:]
-            return {'ok':True,'issues':items},False
         if name=='verify':
             t=(args.get('contains_text') or '').strip();u=(args.get('url_includes') or '').strip()
             if not t and not u:raise ValueError('Informe condição de verificação.')
@@ -549,6 +551,7 @@ class Runtime:
                                 # New origins require one user authorization before navigation.
                                 approved_origin_this_step=False
                                 if name=='navigate':
+                                    self.blocked_navigations.pop(workspace,None)
                                     destination=origin_of(args['url'])
                                     if destination not in allowed:
                                         await self._request_approval(job,'authorize_origin',
@@ -630,6 +633,15 @@ class Runtime:
                                 failures+=1
                                 diagnosis=classify_error(exc)
                                 result={'error':str(exc)[:250],**diagnosis}
+                                blocked=self.blocked_navigations.pop(workspace,None) if name=='navigate' else None
+                                if blocked and blocked not in allowed:
+                                    # Redirect was blocked before load. Ask the user, never retry a click.
+                                    await self._request_approval(job,'authorize_origin',
+                                        {'name':blocked},page,category='redirect_origin')
+                                    allowed.add(blocked)
+                                    result={'error':'Redirecionamento autorizado após bloqueio. Observe novamente e navegue somente se necessário.',
+                                            'blocked_origin':blocked,'kind':'recoverable_redirect'}
+                                    self.store.append(job,{'event':'redirect_origin_authorized','url_origin':blocked})
                                 self.store.append(job,{'event':'tool_failed','step':step,'tool':name,
                                     'error_kind':diagnosis['kind']})
                                 if diagnosis['kind']=='permission':
