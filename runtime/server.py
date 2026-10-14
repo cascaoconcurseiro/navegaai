@@ -88,6 +88,7 @@ class TaskRequest(BaseModel):
     approval_mode:str='read_only'
     allowed_origins:list[str]=Field(default_factory=list,max_length=20)
     allow_sensitive:bool=False
+    vision_enabled:bool=False
     client_job_id:str|None=None
     resume_of:str|None=None
 
