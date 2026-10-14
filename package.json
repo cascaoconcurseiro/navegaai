@@ -1,9 +1,9 @@
 {
   "name": "navegaai-chrome-extension",
   "private": true,
-  "version": "3.3.0-rc.2",
+  "version": "4.0.0-rc.1",
   "type": "module",
-  "description": "NavegaAI 3.3 RC: isolated browser workspaces, durable recovery, risk approvals and diagnostics",
+  "description": "NavegaAI Cognitive Runtime RC: trusted browser observations, structural approval policies and opt-in visual perception",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "check": "node --check src/panel.js && node --check src/chrome-browser.js && node --check src/agent.js && node --check src/neo-mcp.js && node --check src/providers.js && node --check src/demo.js && node --check src/policies.js && node --check src/background.js && node --check src/models.js && node --check src/cron.js && node --check src/audit.js && node --check src/memory.js && node --check src/site-permissions.js && node --check src/execution-engine.js && node --check src/workspaces.js && node --check src/conversations.js && node --check src/skills.js && node --check src/navigation-commit.js && node --check src/tab-readiness.js && node --check src/recovery.js && node --check src/context-budget.js && node --check src/proof-engine.js && node --check src/interrupted-run.js && node --check src/deadlines.js && node --check src/intent.js && node --check src/continuation.js && node --check src/runtime-client.js"

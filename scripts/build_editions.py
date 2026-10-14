@@ -15,9 +15,9 @@ for name in ('Standard','Advanced-CDP'):
     m['permissions']=[p for p in manifest['permissions'] if p!='debugger']
     if name == 'Advanced-CDP':
         m['permissions'].append('debugger')
-        m['description']='NavegaAI 3.3 Advanced: depuração CDP com risco elevado e consentimento.'
+        m['description']=f'NavegaAI {version} Advanced: CDP com risco elevado e consentimento.'
     else:
-        m['description']='NavegaAI 3.3 Standard: runtime Playwright opcional, sem debugger.'
+        m['description']=f'NavegaAI {version} Standard: Cognitive Runtime e Playwright, sem debugger.'
     with ZipFile(dest,'w',ZIP_DEFLATED,compresslevel=9) as archive:
         for f in sorted(project.rglob('*')):
             if not f.is_file() or any(x in ignore for x in f.parts):continue

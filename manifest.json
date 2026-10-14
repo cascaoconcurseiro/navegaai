@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "NavegaAI • Agente para o Navegador",
   "short_name": "NavegaAI",
-  "description": "NavegaAI 3.3: navegação confiável sem página inicial obrigatória, isolamento e runtime Playwright opcional.",
-  "version": "3.3.0",
+  "description": "NavegaAI Cognitive Runtime v4 RC: políticas de ação, visão autorizada e navegação a partir de aba vazia.",
+  "version": "4.0.0",
   "minimum_chrome_version": "116",
   "permissions": [
     "sidePanel",
@@ -36,5 +36,5 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
-  "version_name": "3.2 RC · Isolated Runtime + Durable Recovery"
+  "version_name": "4.0 Cognitive Runtime RC"
 }
